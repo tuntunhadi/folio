@@ -1,0 +1,80 @@
+{% extends "wiki/base.html" %}
+
+{% block title %}Folio — Home{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-6 py-10">
+
+  <!-- Header -->
+  <div class="mb-10">
+    <h1 class="text-3xl font-semibold text-stone-900" style="font-family: 'Lora', serif;">
+      {% if query %}Search results{% else %}All Pages{% endif %}
+    </h1>
+    <p class="mt-1.5 text-stone-500 text-sm">
+      {% if query %}
+        {{ pages.count }} result{{ pages.count|pluralize }} for "<span class="font-medium text-stone-700">{{ query }}</span>"
+        — <a href="{% url 'home' %}" class="text-stone-500 underline underline-offset-2 hover:text-stone-800">clear</a>
+      {% else %}
+        {{ pages.count }} published page{{ pages.count|pluralize }}
+      {% endif %}
+    </p>
+  </div>
+
+  <!-- Page list -->
+  {% if pages %}
+    <div class="space-y-2">
+      {% for page in pages %}
+        <a href="{% url 'page_detail' page.slug %}"
+           class="flex items-center justify-between px-5 py-4 bg-white border border-stone-200
+                  rounded-xl hover:border-stone-300 hover:shadow-sm transition group">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 bg-stone-100 group-hover:bg-stone-200 rounded-lg flex items-center
+                        justify-center flex-shrink-0 transition">
+              <svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <p class="font-medium text-stone-800 group-hover:text-stone-900 text-sm truncate">
+                {{ page.title }}
+              </p>
+              <p class="text-xs text-stone-400 mt-0.5">
+                Updated {{ page.updated_at|date:"d M Y" }}
+              </p>
+            </div>
+          </div>
+          <svg class="w-4 h-4 text-stone-300 group-hover:text-stone-500 flex-shrink-0 ml-4 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <!-- Empty state -->
+    <div class="flex flex-col items-center justify-center py-24 text-center">
+      <div class="w-14 h-14 bg-stone-100 rounded-2xl flex items-center justify-center mb-4">
+        <svg class="w-7 h-7 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+        </svg>
+      </div>
+      {% if query %}
+        <p class="text-stone-600 font-medium">No pages found</p>
+        <p class="text-stone-400 text-sm mt-1">Try a different search term</p>
+      {% else %}
+        <p class="text-stone-600 font-medium">No pages yet</p>
+        <p class="text-stone-400 text-sm mt-1">
+          {% if user.is_authenticated %}
+            <a href="{% url 'page_create' %}" class="text-stone-700 underline underline-offset-2 hover:text-stone-900">Create your first page</a>
+          {% else %}
+            Login as admin to start writing
+          {% endif %}
+        </p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

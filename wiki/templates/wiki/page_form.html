@@ -1,0 +1,170 @@
+{% extends "wiki/base.html" %}
+
+{% block title %}{{ action }} Page — Folio{% endblock %}
+
+{% block extra_head %}
+<!-- EasyMDE -->
+<link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+<script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+<style>
+  /* Fix EasyMDE height in layout */
+  .CodeMirror { min-height: 420px !important; }
+  .EasyMDEContainer { display: flex; flex-direction: column; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-10">
+
+  <!-- Header -->
+  <div class="flex items-center gap-3 mb-8">
+    <a href="{% url 'admin_dashboard' %}"
+       class="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+    </a>
+    <div>
+      <h1 class="text-2xl font-semibold text-stone-900" style="font-family: 'Lora', serif;">
+        {{ action }} Page
+      </h1>
+      {% if page %}
+        <p class="text-xs text-stone-400 font-mono mt-0.5">/page/{{ page.slug }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="post" id="page-form">
+    {% csrf_token %}
+
+    <div class="space-y-6">
+
+      <!-- Title + Status row -->
+      <div class="flex flex-col sm:flex-row gap-4">
+        <div class="flex-1">
+          <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">
+            Title
+          </label>
+          {{ form.title }}
+          {% if form.title.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ form.title.errors.0 }}</p>
+          {% endif %}
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">
+            Status
+          </label>
+          {{ form.status }}
+        </div>
+      </div>
+
+      <!-- Slug -->
+      <div>
+        <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">
+          Slug <span class="text-stone-400 normal-case font-normal">(URL-friendly, auto-generated)</span>
+        </label>
+        {{ form.slug }}
+        {% if form.slug.errors %}
+          <p class="text-red-500 text-xs mt-1">{{ form.slug.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Content -->
+      <div>
+        <label class="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2">
+          Content <span class="text-stone-400 normal-case font-normal">(Markdown)</span>
+        </label>
+        {{ form.content }}
+        {% if form.content.errors %}
+          <p class="text-red-500 text-xs mt-1">{{ form.content.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex items-center justify-between pt-2 pb-4 border-t border-stone-100">
+        <a href="{% url 'admin_dashboard' %}"
+           class="px-4 py-2.5 text-sm text-stone-500 hover:text-stone-700 hover:bg-stone-100
+                  rounded-lg transition font-medium">
+          Cancel
+        </a>
+        <div class="flex items-center gap-3">
+          {% if page %}
+            <a href="{% url 'page_delete' page.slug %}"
+               class="px-4 py-2.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50
+                      rounded-lg transition font-medium">
+              Delete
+            </a>
+          {% endif %}
+          <button type="submit"
+            class="px-5 py-2.5 bg-stone-800 text-white text-sm font-medium rounded-lg
+                   hover:bg-stone-700 active:bg-stone-900 transition">
+            {{ action }} Page
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </form>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Auto-generate slug from title
+  const titleInput = document.querySelector('input[name="title"]');
+  const slugInput  = document.querySelector('input[name="slug"]');
+  let slugEdited = slugInput.value.length > 0;
+
+  function toSlug(str) {
+    return str.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  }
+
+  titleInput.addEventListener('input', () => {
+    if (!slugEdited) {
+      slugInput.value = toSlug(titleInput.value);
+    }
+  });
+
+  slugInput.addEventListener('input', () => {
+    slugEdited = slugInput.value.length > 0;
+  });
+
+  // Init EasyMDE
+  const easyMDE = new EasyMDE({
+    element: document.getElementById('markdown-editor'),
+    spellChecker: false,
+    autosave: {
+      enabled: true,
+      uniqueId: 'folio-editor-{{ page.slug|default:"new" }}',
+      delay: 1000,
+    },
+    toolbar: [
+      'bold', 'italic', 'strikethrough', '|',
+      'heading-1', 'heading-2', 'heading-3', '|',
+      'unordered-list', 'ordered-list', '|',
+      'link', 'image', 'table', '|',
+      'code', 'quote', '|',
+      'preview', 'side-by-side', 'fullscreen', '|',
+      'guide'
+    ],
+    placeholder: '# Page Title\n\nWrite your content here in Markdown...\n\n## Section\n\nStart typing...',
+    status: ['autosave', 'lines', 'words'],
+    renderingConfig: {
+      singleLineBreaks: false,
+    },
+    minHeight: '420px',
+  });
+
+  // ✅ FIX: Sync EasyMDE content back to textarea before form submit
+  // EasyMDE renders into CodeMirror and detaches from the original textarea,
+  // so we must manually push the value before Django receives the POST.
+  document.getElementById('page-form').addEventListener('submit', function(e) {
+    easyMDE.codemirror.save(); // flush CodeMirror → textarea
+  });
+</script>
+{% endblock %}
